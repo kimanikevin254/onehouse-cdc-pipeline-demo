@@ -1,0 +1,102 @@
+services:
+    postgres:
+        image: postgres:17
+        container_name: source_db
+        restart: always
+        ports:
+            - "5432:5432"
+        command: >
+            postgres
+            -c wal_level=logical
+        environment:
+            - POSTGRES_USER=cdc_user
+            - POSTGRES_PASSWORD=cdc_password
+            - POSTGRES_DB=cdc_db
+        volumes:
+            - ./docker_data/postgres:/var/lib/postgresql/data
+            - ./scripts/init-postgres.sh:/docker-entrypoint-initdb.d/init-postgres.sh
+        networks:
+            - cdc-source-network
+
+    schema-registry:
+        image: confluentinc/cp-schema-registry:7.9.0
+        hostname: schema-registry
+        container_name: schema-registry
+        depends_on:
+            - zookeeper
+        ports:
+            - "8181:8181"
+        environment:
+            SCHEMA_REGISTRY_HOST_NAME: schema-registry
+            SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
+            SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
+        restart: on-failure
+        networks:
+            - cdc-source-network
+
+    zookeeper:
+        image: confluentinc/cp-zookeeper:latest
+        container_name: zookeeper
+        restart: always
+        environment:
+            ZOOKEEPER_CLIENT_PORT: 2181
+        ports:
+            - "2181:2181"
+        networks:
+            - cdc-source-network
+
+    kafka:
+        image: confluentinc/cp-kafka:latest
+        container_name: kafka
+        restart: always
+        environment:
+            KAFKA_BROKER_ID: 1
+            KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+            KAFKA_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        depends_on:
+            - zookeeper
+        networks:
+            - cdc-source-network
+
+    debezium:
+        image: kimanikevin254/debezium-connect:3.0
+        container_name: debezium
+        hostname: debezium
+        depends_on:
+            - kafka
+            - schema-registry
+        ports:
+            - "8083:8083"
+        environment:
+            GROUP_ID: 1
+            CONFIG_STORAGE_TOPIC: my_connect_configs
+            OFFSET_STORAGE_TOPIC: my_connect_offsets
+            KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+            VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+            CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+            CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+            BOOTSTRAP_SERVERS: kafka:29092
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "curl",
+                    "--silent",
+                    "--fail",
+                    "-X",
+                    "GET",
+                    "http://localhost:8083/connectors",
+                ]
+            start_period: 10s
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        networks:
+            - cdc-source-network
+
+networks:
+    cdc-source-network:
+        driver: bridge
