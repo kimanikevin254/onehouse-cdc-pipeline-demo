@@ -61,42 +61,6 @@ services:
         networks:
             - cdc-source-network
 
-    debezium:
-        image: kimanikevin254/debezium-connect:3.0
-        container_name: debezium
-        hostname: debezium
-        depends_on:
-            - kafka
-            - schema-registry
-        ports:
-            - "8083:8083"
-        environment:
-            GROUP_ID: 1
-            CONFIG_STORAGE_TOPIC: my_connect_configs
-            OFFSET_STORAGE_TOPIC: my_connect_offsets
-            KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
-            VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
-            CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-            CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-            BOOTSTRAP_SERVERS: kafka:29092
-        healthcheck:
-            test:
-                [
-                    "CMD",
-                    "curl",
-                    "--silent",
-                    "--fail",
-                    "-X",
-                    "GET",
-                    "http://localhost:8083/connectors",
-                ]
-            start_period: 10s
-            interval: 10s
-            timeout: 5s
-            retries: 5
-        networks:
-            - cdc-source-network
-
 networks:
     cdc-source-network:
         driver: bridge
