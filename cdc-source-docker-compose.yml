@@ -16,7 +16,7 @@ services:
             - ./docker_data/postgres:/var/lib/postgresql/data
             - ./scripts/init-postgres.sh:/docker-entrypoint-initdb.d/init-postgres.sh
         networks:
-            - cdc-source-network
+            - cdc-network
 
     schema-registry:
         image: confluentinc/cp-schema-registry:7.9.0
@@ -32,7 +32,7 @@ services:
             SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
         restart: on-failure
         networks:
-            - cdc-source-network
+            - cdc-network
 
     zookeeper:
         image: confluentinc/cp-zookeeper:latest
@@ -43,7 +43,7 @@ services:
         ports:
             - "2181:2181"
         networks:
-            - cdc-source-network
+            - cdc-network
 
     kafka:
         image: confluentinc/cp-kafka:latest
@@ -61,8 +61,8 @@ services:
         depends_on:
             - zookeeper
         networks:
-            - cdc-source-network
+            - cdc-network
 
 networks:
-    cdc-source-network:
-        driver: bridge
+    cdc-network:
+        external: true

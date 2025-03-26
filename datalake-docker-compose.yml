@@ -16,7 +16,7 @@ services:
             timeout: 3s
             retries: 5
         networks:
-            - cdc-datalake-network
+            - cdc-network
 
     hdfs-datanode1:
         image: apache/hadoop:3.4
@@ -29,7 +29,7 @@ services:
 
         command: ["hdfs", "datanode"]
         networks:
-            - cdc-datalake-network
+            - cdc-network
 
     hive-metastore:
         image: kimanikevin254/hive-metastore:4.0.0
@@ -47,7 +47,7 @@ services:
             hdfs-namenode:
                 condition: service_started
         networks:
-            - cdc-datalake-network
+            - cdc-network
 
     hive-metastore-db:
         image: mysql:8.0
@@ -67,7 +67,7 @@ services:
             retries: 5
             start_period: 30s
         networks:
-            - cdc-datalake-network
+            - cdc-network
 
     spark:
         image: kimanikevin254/spark:3.5
@@ -81,7 +81,7 @@ services:
             - ${PWD}/config_files/hive-site.xml:/opt/bitnami/spark/conf/hive-site.xml
             - ${PWD}/config_files/core-site.xml:/opt/bitnami/spark/conf/core-site.xml
         networks:
-            - cdc-datalake-network
+            - cdc-network
 
     hiveserver2-standalone:
         image: kimanikevin254/hiveserver2:4.0.1
@@ -96,12 +96,12 @@ services:
         depends_on:
             - hive-metastore
         networks:
-            - cdc-datalake-network
+            - cdc-network
 
 volumes:
     hdfs-namenode-data:
     hdfs-datanode1-data:
 
 networks:
-    cdc-datalake-network:
-        driver: bridge
+    cdc-network:
+        external: true
