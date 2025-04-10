@@ -206,4 +206,17 @@ To run this project locally, you need to have the following:
         5 rows selected (6.097 seconds)
         ```
 
-11. You can now make any changes to the data in the source Postgres database and they will always be reflected in the datalake.
+11. You can now make any changes to the data in the source Postgres database and they will always be reflected in the datalake after every 10 seconds.
+
+12. To stop and remove the containers, execute the commands:
+
+    ```bash
+    docker compose -f datalake-docker-compose.yml down
+    docker compose -f cdc-source-docker-compose.yml down
+    ```
+
+13. To remove the network:
+
+    ```bash
+    docker network rm cdc-network
+    ```
