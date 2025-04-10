@@ -63,6 +63,26 @@ services:
         networks:
             - cdc-network
 
+    debezium:
+        image: kimanikevin254/debezium-connect:3.0
+        container_name: debezium
+        environment:
+            - GROUP_ID: 1
+            - CONFIG_STORAGE_TOPIC: my_connect_configs
+            - OFFSET_STORAGE_TOPIC: my_connect_offsets
+            - KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+            - VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+            - CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+            - CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+            - BOOTSTRAP_SERVERS: kafka:29092
+        depends_on:
+            - kafka
+            - schema-registry
+        ports:
+            - "8083:8083"
+        networks:
+            - cdc-network
+
 networks:
     cdc-network:
         external: true
