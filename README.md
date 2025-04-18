@@ -16,7 +16,7 @@ The CDC pipeline includes the following components:
 
 Here is a rough architecture diagram of the CDC:
 
-![Rough architecture diagram](https://i.imgur.com/lCevhii.png)
+![Rough architecture diagram](https://i.imgur.com/5W96qAt.png)
 
 ## Prerequisites
 
