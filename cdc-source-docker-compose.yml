@@ -46,7 +46,7 @@ services:
             - cdc-network
 
     kafka:
-        image: confluentinc/cp-kafka:latest
+        image: confluentinc/cp-kafka:7.3.2
         container_name: kafka
         restart: always
         ports:
