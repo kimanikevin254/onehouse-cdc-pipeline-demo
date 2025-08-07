@@ -2,7 +2,242 @@
 
 This repository demonstrates how to implement Change Data Capture (CDC) with Apache Hudi to enable real-time updates in a data lake.
 
-## Branches
+## Architecture Overview
 
--   **`main`**: Starter template to follow along with the article.
--   **`solution`**: Fully implemented project with instructions to run locally.
+The CDC pipeline includes the following components:
+
+-   [PostgreSQL](https://www.postgresql.org/) as the transactional source database
+-   [Debezium](https://debezium.io/) to capture real-time changes from the source database
+-   [Kafka](https://kafka.apache.org/) as the message broker for streaming change events
+-   [Hadoop Distributed File System HDFS (HDFS)](https://hadoop.apache.org/docs/r1.2.1/hdfs_design.html) as the destination data lake storage
+-   [Apache Spark](https://spark.apache.org/) to process and write data into the data lake using Hudi Streamer
+-   [Apache Hudi](https://hudi.apache.org/) to manage incremental data updates
+-   [Hive Metastore](https://hive.apache.org/docs/latest/adminmanual-metastore-3-0-administration_75978150/) to manage metadata.
+-   [Spark SQL](https://spark.apache.org/sql/) to query the datalake
+
+Here is an architecture diagram of the CDC pipeline:
+
+![Architecture diagram](https://i.imgur.com/ijASYFL.png)
+
+## Prerequisites
+
+To run this project locally, you need to have the following:
+
+-   [Docker](https://docs.docker.com/engine/install/) and [Docker Compose](https://docs.docker.com/compose/install/) installed on your local machine
+-   [Git CLI](https://git-scm.com/downloads) installed on your local machine
+
+## Getting Started
+
+1.  Clone the project:
+
+    ```bash
+    git clone --single-branch -b solution https://github.com/kimanikevin254/onehouse-cdc-pipeline-demo.git
+    ```
+
+2.  `cd` into the project directory:
+
+    ```bash
+    cd onehouse-cdc-pipeline-demo
+    ```
+
+3.  Create a Docker network that your containers will use to communicate:
+
+    ```bash
+    docker network create cdc-network
+    ```
+
+4.  Run the CDC source infrastructure. This includes source PostgreSQL database (where the transactional data is stored), along with Kafka, Zookeeper, and Schema Registry:
+
+    ```bash
+    docker compose -f cdc-source-docker-compose.yml up -d
+    ```
+
+5.  Verify your CDC source components are up running by executing the command `docker ps`. Your output should look similar to the following:
+
+    ```
+    CONTAINER ID   IMAGE                               	COMMAND              	CREATED      	STATUS      	PORTS                                                         	NAMES
+    038a3f8aea79   confluentinc/cp-schema-registry:7.9.0   "/etc/confluent/dock…"   36 seconds ago   Up 36 seconds   8081/tcp, 0.0.0.0:8181->8181/tcp, [::]:8181->8181/tcp         	schema-registry
+    3ad5503ef435   confluentinc/cp-kafka:latest        	"/etc/confluent/dock…"   36 seconds ago   Up 36 seconds   9092/tcp                                                      	kafka
+    e823ac4ea104   confluentinc/cp-zookeeper:latest    	"/etc/confluent/dock…"   36 seconds ago   Up 36 seconds   2888/tcp, 0.0.0.0:2181->2181/tcp, [::]:2181->2181/tcp, 3888/tcp   zookeeper
+    64e7f9372e01   postgres:17                         	"docker-entrypoint.s…"   36 seconds ago   Up 36 seconds   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp                   	source_db
+    ```
+
+6.  Run the datalake infrastructure. This will launch Hadoop HDFS, Hive Metastore and Spark which are needed to process, store, and query the data once it is captured from the source database:
+
+    ```bash
+    docker compose -f datalake-docker-compose.yml up -d
+    ```
+
+7.  Verify that all your CDC components up and running by executing the command `docker ps`. Your output should look similar to the following:
+
+    ```
+    CONTAINER ID   IMAGE                                       COMMAND                  CREATED          STATUS                    PORTS                                                                                      NAMES
+    65de11c5d976   onehouse-cdc-pipeline-demo-hive-metastore   "/entrypoint.sh"         11 seconds ago   Up 5 seconds              10000/tcp, 0.0.0.0:9083->9083/tcp, [::]:9083->9083/tcp, 10002/tcp                          hive-metastore
+    70d6caf95a53   apache/hadoop:3.4                           "/usr/local/bin/dumb…"   11 seconds ago   Up 10 seconds                                                                                                        hdfs-datanode1
+    85eadf047298   apache/hadoop:3.4                           "/bin/bash /namenode…"   11 seconds ago   Up 10 seconds (healthy)   0.0.0.0:9870->9870/tcp, [::]:9870->9870/tcp                                                hdfs-namenode
+    f8547335c339   onehouse-cdc-pipeline-demo-spark            "/opt/entrypoint.sh …"   11 seconds ago   Up 10 seconds             0.0.0.0:7077->7077/tcp, [::]:7077->7077/tcp, 0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp   spark
+    eba98ba147db   mysql:8.0                                   "docker-entrypoint.s…"   11 seconds ago   Up 10 seconds (healthy)   3306/tcp, 33060/tcp                                                                        hive-metastore-db
+    96800a2d64d7   confluentinc/cp-schema-registry:7.9.0       "/etc/confluent/dock…"   58 seconds ago   Up 56 seconds             8081/tcp, 0.0.0.0:8181->8181/tcp, [::]:8181->8181/tcp                                      schema-registry
+    5bcde25bd882   confluentinc/cp-kafka:7.3.2                 "/etc/confluent/dock…"   58 seconds ago   Up 56 seconds             0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp                                                kafka
+    f268fe5527c5   confluentinc/cp-zookeeper:latest            "/etc/confluent/dock…"   58 seconds ago   Up 57 seconds             2888/tcp, 0.0.0.0:2181->2181/tcp, [::]:2181->2181/tcp, 3888/tcp                            zookeeper
+    40f68adfd6d0   postgres:17                                 "docker-entrypoint.s…"   58 seconds ago   Up 57 seconds             0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp                                                source_db
+    ```
+
+8.  Building a Kafka Connect image for Debezium and run the container:
+
+    ```bash
+    docker build -t my-debezium-connect:3.0 ./debezium-connect
+
+    docker run -it --rm --name connect \
+        --network cdc-network \
+        -e GROUP_ID=1 \
+        -e CONFIG_STORAGE_TOPIC=my_connect_configs \
+        -e OFFSET_STORAGE_TOPIC=my_connect_offsets \
+        -e KEY_CONVERTER=io.confluent.connect.avro.AvroConverter \
+        -e VALUE_CONVERTER=io.confluent.connect.avro.AvroConverter \
+        -e CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081 \
+        -e CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081 \
+        -e BOOTSTRAP_SERVERS=kafka:29092 \
+        -p 8083:8083 my-debezium-connect:3.0
+    ```
+
+9.  Create the Debezium Postgres Kafka Connect connector:
+
+    ```bash
+    curl \
+        --location 'http://localhost:8083/connectors/' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "debezium-postgres-connector",
+            "config": {
+                "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+                "database.hostname": "source_db",
+                "database.port": "5432",
+                "database.user": "debezium_user",
+                "database.password": "debezium_password",
+                "database.dbname": "cdc_db",
+                "plugin.name": "pgoutput",
+                "publication.name": "debezium_pub",
+                "table.include.list": "public.orders",
+                "topic.prefix": "postgres",
+                "key.converter": "io.confluent.connect.avro.AvroConverter",
+                "key.converter.schema.registry.url": "http://schema-registry:8081",
+                "value.converter": "io.confluent.connect.avro.AvroConverter",
+                "value.converter.schema.registry.url": "http://schema-registry:8081",
+                "transforms": "unwrap",
+                "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+                "transforms.unwrap.drop.tombstones": false,
+                "transforms.unwrap.delete.handling.mode": "rewrite",
+                "decimal.handling.mode": "string"
+            }
+        }'
+    ```
+
+    Your output should look like this:
+
+    ```json
+    {
+        "name": "debezium-postgres-connector",
+        "config": {
+            "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+            "database.hostname": "source_db",
+            "database.port": "5432",
+            "database.user": "debezium_user",
+            "database.password": "debezium_password",
+            "database.dbname": "cdc_db",
+            "plugin.name": "pgoutput",
+            "publication.name": "debezium_pub",
+            "table.include.list": "public.orders",
+            "topic.prefix": "postgres",
+            "key.converter": "io.confluent.connect.avro.AvroConverter",
+            "key.converter.schema.registry.url": "http://schema-registry:8081",
+            "value.converter": "io.confluent.connect.avro.AvroConverter",
+            "value.converter.schema.registry.url": "http://schema-registry:8081",
+            "transforms": "unwrap",
+            "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+            "transforms.unwrap.drop.tombstones": "false",
+            "transforms.unwrap.delete.handling.mode": "rewrite",
+            "decimal.handling.mode": "string",
+            "name": "debezium-postgres-connector"
+        },
+        "tasks": [],
+        "type": "source"
+    }
+    ```
+
+10. Start ingesting the CDC data into Hudi:
+
+    ```bash
+    docker exec -it spark /opt/spark/bin/spark-submit \
+        --jars /opt/spark/jars/hudi-spark3.5-bundle_2.12-1.0.2.jar,/opt/spark/jars/hudi-utilities-slim-bundle_2.12-1.0.2.jar \
+        --class org.apache.hudi.utilities.streamer.HoodieStreamer /opt/spark/jars/hudi-utilities-slim-bundle_2.12-1.0.2.jar \
+        --table-type COPY_ON_WRITE \
+        --target-base-path hdfs://hdfs-namenode:9000/warehouse/my-data-lake \
+        --target-table orders \
+        --source-class org.apache.hudi.utilities.sources.AvroKafkaSource \
+        --source-ordering-field updated_at \
+        --schemaprovider-class org.apache.hudi.utilities.schema.SchemaRegistryProvider \
+        --min-sync-interval-seconds 10 \
+        --op UPSERT \
+        --continuous \
+        --enable-sync \
+        --hoodie-conf bootstrap.servers=kafka:29092 \
+        --hoodie-conf schema.registry.url=http://schema-registry:8081 \
+        --hoodie-conf hoodie.streamer.schemaprovider.registry.url=http://schema-registry:8081/subjects/postgres.public.orders-value/versions/latest \
+        --hoodie-conf hoodie.streamer.source.kafka.topic=postgres.public.orders \
+        --hoodie-conf auto.offset.reset=earliest \
+        --hoodie-conf hoodie.datasource.write.recordkey.field=id \
+        --hoodie-conf hoodie.datasource.write.schema.allow.auto.evolution.column.drop=true \
+        --hoodie-conf hoodie.datasource.hive_sync.mode=hms \
+        --hoodie-conf hoodie.datasource.hive_sync.enable=true \
+        --hoodie-conf hoodie.datasource.hive_sync.metastore.uris=thrift://hive-metastore:9083 \
+        --hoodie-conf hoodie.datasource.meta.sync.enable=true \
+        --hoodie-conf hoodie.datasource.hive_sync.auto_create_database=true
+    ```
+
+11. To query the data lake using Spark SQL:
+
+    -   Launch the Spark SQL CLI:
+
+        ```bash
+        docker exec -it spark /opt/spark/bin/spark-sql --conf spark.sql.cli.print.header=true
+        ```
+
+    -   View all the tables inside the data lake:
+
+        ```bash
+        SHOW TABLES;
+        ```
+
+        -   You should get the following output::
+
+        ```
+        namespace       tableName       isTemporary
+        orders
+        ```
+
+    -   You can also view the actual data in the data lake using the command `SELECT id, product_name, quantity, price, status, updated_at FROM orders;`:
+
+        ```
+        id      product_name    quantity        price   status  updated_at
+        1       Laptop  1       1200.00 confirmed       2025-08-06T19:08:14.247179Z
+        2       Smartphone      2       800.00  shipped 2025-08-06T19:08:14.247179Z
+        4       Monitor 1       300.00  delivered       2025-08-06T19:08:14.247179Z
+        3       Headphones      3       150.00  pending 2025-08-06T19:08:14.247179Z
+        5       Keyboard        2       100.00  canceled        2025-08-06T19:08:14.247179Z
+        ```
+
+12. You can now make any changes to the data in the source Postgres database and they will always be reflected in the datalake after every 10 seconds.
+
+13. To stop and remove the containers, execute the commands:
+
+    ```bash
+    docker compose -f datalake-docker-compose.yml down
+    docker compose -f cdc-source-docker-compose.yml down
+    ```
+
+14. To remove the network:
+
+    ```bash
+    docker network rm cdc-network
+    ```
