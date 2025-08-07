@@ -32,15 +32,17 @@ services:
             - cdc-network
 
     hive-metastore:
-        image: kimanikevin254/hive-metastore:4.0.0
+        build:
+            context: ./hive-metastore
+            dockerfile: Dockerfile
         container_name: hive-metastore
         ports:
             - "9083:9083"
         volumes:
             - ${PWD}/config_files/hive-site.xml:/hive_custom_conf/hive-site.xml
-            - ./docker_data/warehouse:/opt/hive/data/new-warehouse
             - ${PWD}/config_files/core-site.xml:/hive_custom_conf/core-site.xml
             - ${PWD}/config_files/hdfs-site.xml:/hive_custom_conf/hdfs-site.xml
+            - ./docker_data/warehouse:/opt/hive/data/new-warehouse
         depends_on:
             hive-metastore-db:
                 condition: service_healthy
@@ -70,7 +72,10 @@ services:
             - cdc-network
 
     spark:
-        image: kimanikevin254/spark:3.5
+        build:
+            context: ./spark
+            dockerfile: Dockerfile
+        command: tail -F /dev/null
         container_name: spark
         environment:
             - SPARK_MODE=master
@@ -78,23 +83,8 @@ services:
             - "8080:8080"
             - "7077:7077"
         volumes:
-            - ${PWD}/config_files/hive-site.xml:/opt/bitnami/spark/conf/hive-site.xml
-            - ${PWD}/config_files/core-site.xml:/opt/bitnami/spark/conf/core-site.xml
-        networks:
-            - cdc-network
-
-    hiveserver2-standalone:
-        image: kimanikevin254/hiveserver2:4.0.1
-        container_name: hiveserver2-standalone
-        ports:
-            - "10000:10000"
-            - "10002:10002"
-        environment:
-            - SERVICE_NAME=hiveserver2
-            - SERVICE_OPTS=-Dhive.metastore.uris=thrift://hive-metastore:9083
-            - IS_RESUME=true
-        depends_on:
-            - hive-metastore
+            - ${PWD}/config_files/hive-site.xml:/opt/spark/conf/hive-site.xml
+            - ${PWD}/config_files/core-site.xml:/opt/spark/conf/core-site.xml
         networks:
             - cdc-network
 
