@@ -1,9 +1,11 @@
 services:
     hdfs-namenode:
         image: apache/hadoop:3.4
+        platform: linux/amd64
         container_name: hudi-cdc-hdfs-namenode
         ports:
             - "9870:9870"
+            - "9000:9000"
         volumes:
             - hdfs-namenode-data:/hadoop/dfs/name
             - ${PWD}/config_files/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml
@@ -20,6 +22,7 @@ services:
 
     hdfs-datanode1:
         image: apache/hadoop:3.4
+        platform: linux/amd64
         container_name: hudi-cdc-hdfs-datanode1
         depends_on:
             - hdfs-namenode
