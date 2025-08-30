@@ -8,4 +8,4 @@ PROJECT_NAME=$(basename $(pwd))
 docker volume rm ${PROJECT_NAME}_hive-metastore-db-data 2>/dev/null || true
 
 echo "Starting services..."
-docker compose -f datalake-docker-compose.yml up -d --build
+docker compose -f datalake-docker-compose.yml up -d
