@@ -1,7 +1,7 @@
 services:
     hdfs-namenode:
         image: apache/hadoop:3.4
-        container_name: hdfs-namenode
+        container_name: hudi-cdc-hdfs-namenode
         ports:
             - "9870:9870"
         volumes:
@@ -20,7 +20,7 @@ services:
 
     hdfs-datanode1:
         image: apache/hadoop:3.4
-        container_name: hdfs-datanode1
+        container_name: hudi-cdc-hdfs-datanode1
         depends_on:
             - hdfs-namenode
         volumes:
@@ -35,7 +35,7 @@ services:
         build:
             context: ./hive-metastore
             dockerfile: Dockerfile
-        container_name: hive-metastore
+        container_name: hudi-cdc-hive-metastore
         ports:
             - "9083:9083"
         volumes:
@@ -53,7 +53,7 @@ services:
 
     hive-metastore-db:
         image: mysql:8.0
-        container_name: hive-metastore-db
+        container_name: hudi-cdc-hive-metastore-db
         environment:
             MYSQL_ROOT_PASSWORD: metastore-root-password
             MYSQL_DATABASE: metastore
@@ -76,7 +76,7 @@ services:
             context: ./spark
             dockerfile: Dockerfile
         command: tail -F /dev/null
-        container_name: spark
+        container_name: hudi-cdc-spark
         environment:
             - SPARK_MODE=master
         ports:

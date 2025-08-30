@@ -1,7 +1,7 @@
 services:
     postgres:
         image: postgres:17
-        container_name: source_db
+        container_name: hudi-cdc-source-db
         restart: always
         ports:
             - "5432:5432"
@@ -21,7 +21,7 @@ services:
     schema-registry:
         image: confluentinc/cp-schema-registry:7.9.0
         hostname: schema-registry
-        container_name: schema-registry
+        container_name: hudi-cdc-schema-registry
         depends_on:
             - zookeeper
         ports:
@@ -36,7 +36,7 @@ services:
 
     zookeeper:
         image: confluentinc/cp-zookeeper:latest
-        container_name: zookeeper
+        container_name: hudi-cdc-zookeeper
         restart: always
         environment:
             ZOOKEEPER_CLIENT_PORT: 2181
@@ -47,7 +47,7 @@ services:
 
     kafka:
         image: confluentinc/cp-kafka:7.3.2
-        container_name: kafka
+        container_name: hudi-cdc-kafka
         restart: always
         ports:
             - "9092:9092"
