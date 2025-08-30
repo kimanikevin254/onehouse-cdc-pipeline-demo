@@ -1,9 +1,11 @@
 services:
     hdfs-namenode:
         image: apache/hadoop:3.4
-        container_name: hdfs-namenode
+        platform: linux/amd64
+        container_name: hudi-cdc-hdfs-namenode
         ports:
             - "9870:9870"
+            - "9000:9000"
         volumes:
             - hdfs-namenode-data:/hadoop/dfs/name
             - ${PWD}/config_files/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml
@@ -20,7 +22,8 @@ services:
 
     hdfs-datanode1:
         image: apache/hadoop:3.4
-        container_name: hdfs-datanode1
+        platform: linux/amd64
+        container_name: hudi-cdc-hdfs-datanode1
         depends_on:
             - hdfs-namenode
         volumes:
@@ -35,7 +38,7 @@ services:
         build:
             context: ./hive-metastore
             dockerfile: Dockerfile
-        container_name: hive-metastore
+        container_name: hudi-cdc-hive-metastore
         ports:
             - "9083:9083"
         volumes:
@@ -53,14 +56,14 @@ services:
 
     hive-metastore-db:
         image: mysql:8.0
-        container_name: hive-metastore-db
+        container_name: hudi-cdc-hive-metastore-db
         environment:
             MYSQL_ROOT_PASSWORD: metastore-root-password
             MYSQL_DATABASE: metastore
             MYSQL_USER: metastore-user
             MYSQL_PASSWORD: metastore-password
         volumes:
-            - ./docker_data/hive-metastore-db:/var/lib/mysql
+            - hive-metastore-db-data:/var/lib/mysql
             - ${PWD}/scripts/init-hive-metastore-db.sh:/docker-entrypoint-initdb.d/init-mysql.sh
         healthcheck:
             test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
@@ -76,7 +79,7 @@ services:
             context: ./spark
             dockerfile: Dockerfile
         command: tail -F /dev/null
-        container_name: spark
+        container_name: hudi-cdc-spark
         environment:
             - SPARK_MODE=master
         ports:
@@ -91,6 +94,7 @@ services:
 volumes:
     hdfs-namenode-data:
     hdfs-datanode1-data:
+    hive-metastore-db-data:
 
 networks:
     cdc-network:

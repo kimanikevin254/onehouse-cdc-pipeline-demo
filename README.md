@@ -54,12 +54,12 @@ To run this project locally, you need to have the following:
 
 5.  Verify your CDC source components are up running by executing the command `docker ps`. Your output should look similar to the following:
 
-    ```
-    CONTAINER ID   IMAGE                               	COMMAND              	CREATED      	STATUS      	PORTS                                                         	NAMES
-    038a3f8aea79   confluentinc/cp-schema-registry:7.9.0   "/etc/confluent/dock…"   36 seconds ago   Up 36 seconds   8081/tcp, 0.0.0.0:8181->8181/tcp, [::]:8181->8181/tcp         	schema-registry
-    3ad5503ef435   confluentinc/cp-kafka:latest        	"/etc/confluent/dock…"   36 seconds ago   Up 36 seconds   9092/tcp                                                      	kafka
-    e823ac4ea104   confluentinc/cp-zookeeper:latest    	"/etc/confluent/dock…"   36 seconds ago   Up 36 seconds   2888/tcp, 0.0.0.0:2181->2181/tcp, [::]:2181->2181/tcp, 3888/tcp   zookeeper
-    64e7f9372e01   postgres:17                         	"docker-entrypoint.s…"   36 seconds ago   Up 36 seconds   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp                   	source_db
+    ```bash
+    CONTAINER ID   IMAGE                                   COMMAND                  CREATED          STATUS          PORTS                                                             NAMES
+    ab780e51b0c2   confluentinc/cp-kafka:7.3.2             "/etc/confluent/dock…"   23 minutes ago   Up 23 minutes   0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp                       hudi-cdc-kafka
+    96f23539cbc6   confluentinc/cp-schema-registry:7.9.0   "/etc/confluent/dock…"   23 minutes ago   Up 23 minutes   8081/tcp, 0.0.0.0:8181->8181/tcp, [::]:8181->8181/tcp             hudi-cdc-schema-registry
+    2076f34dacf7   confluentinc/cp-zookeeper:latest        "/etc/confluent/dock…"   23 minutes ago   Up 23 minutes   2888/tcp, 0.0.0.0:2181->2181/tcp, [::]:2181->2181/tcp, 3888/tcp   hudi-cdc-zookeeper
+    bb47bce4e6a0   postgres:17                             "docker-entrypoint.s…"   23 minutes ago   Up 23 minutes   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp                       hudi-cdc-source-db
     ```
 
 6.  Run the datalake infrastructure. This will launch Hadoop HDFS, Hive Metastore and Spark which are needed to process, store, and query the data once it is captured from the source database:
@@ -68,19 +68,25 @@ To run this project locally, you need to have the following:
     docker compose -f datalake-docker-compose.yml up -d
     ```
 
+    If you have run this before and your Hive Metastore has some data, use the commands below instead to avoid running into any issues (such as the Hive Metastore not starting properly):
+
+    ```bash
+    chmod +x ./scripts/reset-hive-metastore-db.sh && ./scripts/reset-hive-metastore-db.sh
+    ```
+
 7.  Verify that all your CDC components up and running by executing the command `docker ps`. Your output should look similar to the following:
 
-    ```
+    ```bash
     CONTAINER ID   IMAGE                                       COMMAND                  CREATED          STATUS                    PORTS                                                                                      NAMES
-    65de11c5d976   onehouse-cdc-pipeline-demo-hive-metastore   "/entrypoint.sh"         11 seconds ago   Up 5 seconds              10000/tcp, 0.0.0.0:9083->9083/tcp, [::]:9083->9083/tcp, 10002/tcp                          hive-metastore
-    70d6caf95a53   apache/hadoop:3.4                           "/usr/local/bin/dumb…"   11 seconds ago   Up 10 seconds                                                                                                        hdfs-datanode1
-    85eadf047298   apache/hadoop:3.4                           "/bin/bash /namenode…"   11 seconds ago   Up 10 seconds (healthy)   0.0.0.0:9870->9870/tcp, [::]:9870->9870/tcp                                                hdfs-namenode
-    f8547335c339   onehouse-cdc-pipeline-demo-spark            "/opt/entrypoint.sh …"   11 seconds ago   Up 10 seconds             0.0.0.0:7077->7077/tcp, [::]:7077->7077/tcp, 0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp   spark
-    eba98ba147db   mysql:8.0                                   "docker-entrypoint.s…"   11 seconds ago   Up 10 seconds (healthy)   3306/tcp, 33060/tcp                                                                        hive-metastore-db
-    96800a2d64d7   confluentinc/cp-schema-registry:7.9.0       "/etc/confluent/dock…"   58 seconds ago   Up 56 seconds             8081/tcp, 0.0.0.0:8181->8181/tcp, [::]:8181->8181/tcp                                      schema-registry
-    5bcde25bd882   confluentinc/cp-kafka:7.3.2                 "/etc/confluent/dock…"   58 seconds ago   Up 56 seconds             0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp                                                kafka
-    f268fe5527c5   confluentinc/cp-zookeeper:latest            "/etc/confluent/dock…"   58 seconds ago   Up 57 seconds             2888/tcp, 0.0.0.0:2181->2181/tcp, [::]:2181->2181/tcp, 3888/tcp                            zookeeper
-    40f68adfd6d0   postgres:17                                 "docker-entrypoint.s…"   58 seconds ago   Up 57 seconds             0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp                                                source_db
+    81dc5a23aa7a   onehouse-cdc-pipeline-demo-hive-metastore   "/entrypoint.sh"         29 seconds ago   Up 7 seconds              10000/tcp, 0.0.0.0:9083->9083/tcp, [::]:9083->9083/tcp, 10002/tcp                          hudi-cdc-hive-metastore
+    22fea1242bd4   apache/hadoop:3.4                           "/usr/local/bin/dumb…"   29 seconds ago   Up 28 seconds                                                                                                        hudi-cdc-hdfs-datanode1
+    5b01c1f0ee45   mysql:8.0                                   "docker-entrypoint.s…"   29 seconds ago   Up 28 seconds (healthy)   3306/tcp, 33060/tcp                                                                        hudi-cdc-hive-metastore-db
+    e61498fba83e   apache/hadoop:3.4                           "/bin/bash /namenode…"   29 seconds ago   Up 28 seconds (healthy)   0.0.0.0:9000->9000/tcp, [::]:9000->9000/tcp, 0.0.0.0:9870->9870/tcp, [::]:9870->9870/tcp   hudi-cdc-hdfs-namenode
+    a38fa43dac25   onehouse-cdc-pipeline-demo-spark            "/opt/entrypoint.sh …"   29 seconds ago   Up 28 seconds             0.0.0.0:7077->7077/tcp, [::]:7077->7077/tcp, 0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp   hudi-cdc-spark
+    ab780e51b0c2   confluentinc/cp-kafka:7.3.2                 "/etc/confluent/dock…"   12 minutes ago   Up 12 minutes             0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp                                                hudi-cdc-kafka
+    96f23539cbc6   confluentinc/cp-schema-registry:7.9.0       "/etc/confluent/dock…"   12 minutes ago   Up 12 minutes             8081/tcp, 0.0.0.0:8181->8181/tcp, [::]:8181->8181/tcp                                      hudi-cdc-schema-registry
+    2076f34dacf7   confluentinc/cp-zookeeper:latest            "/etc/confluent/dock…"   12 minutes ago   Up 12 minutes             2888/tcp, 0.0.0.0:2181->2181/tcp, [::]:2181->2181/tcp, 3888/tcp                            hudi-cdc-zookeeper
+    bb47bce4e6a0   postgres:17                                 "docker-entrypoint.s…"   12 minutes ago   Up 12 minutes             0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp                                                hudi-cdc-source-db
     ```
 
 8.  Building a Kafka Connect image for Debezium and run the container:
@@ -95,9 +101,9 @@ To run this project locally, you need to have the following:
         -e OFFSET_STORAGE_TOPIC=my_connect_offsets \
         -e KEY_CONVERTER=io.confluent.connect.avro.AvroConverter \
         -e VALUE_CONVERTER=io.confluent.connect.avro.AvroConverter \
-        -e CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081 \
-        -e CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081 \
-        -e BOOTSTRAP_SERVERS=kafka:29092 \
+        -e CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL=http://hudi-cdc-schema-registry:8081 \
+        -e CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL=http://hudi-cdc-schema-registry:8081 \
+        -e BOOTSTRAP_SERVERS=hudi-cdc-kafka:29092 \
         -p 8083:8083 my-debezium-connect:3.0
     ```
 
@@ -111,7 +117,7 @@ To run this project locally, you need to have the following:
             "name": "debezium-postgres-connector",
             "config": {
                 "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
-                "database.hostname": "source_db",
+                "database.hostname": "hudi-cdc-source-db",
                 "database.port": "5432",
                 "database.user": "debezium_user",
                 "database.password": "debezium_password",
@@ -121,9 +127,9 @@ To run this project locally, you need to have the following:
                 "table.include.list": "public.orders",
                 "topic.prefix": "postgres",
                 "key.converter": "io.confluent.connect.avro.AvroConverter",
-                "key.converter.schema.registry.url": "http://schema-registry:8081",
+                "key.converter.schema.registry.url": "http://hudi-cdc-schema-registry:8081",
                 "value.converter": "io.confluent.connect.avro.AvroConverter",
-                "value.converter.schema.registry.url": "http://schema-registry:8081",
+                "value.converter.schema.registry.url": "http://hudi-cdc-schema-registry:8081",
                 "transforms": "unwrap",
                 "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
                 "transforms.unwrap.drop.tombstones": false,
@@ -140,7 +146,7 @@ To run this project locally, you need to have the following:
         "name": "debezium-postgres-connector",
         "config": {
             "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
-            "database.hostname": "source_db",
+            "database.hostname": "hudi-cdc-source-db",
             "database.port": "5432",
             "database.user": "debezium_user",
             "database.password": "debezium_password",
@@ -150,9 +156,9 @@ To run this project locally, you need to have the following:
             "table.include.list": "public.orders",
             "topic.prefix": "postgres",
             "key.converter": "io.confluent.connect.avro.AvroConverter",
-            "key.converter.schema.registry.url": "http://schema-registry:8081",
+            "key.converter.schema.registry.url": "http://hudi-cdc-schema-registry:8081",
             "value.converter": "io.confluent.connect.avro.AvroConverter",
-            "value.converter.schema.registry.url": "http://schema-registry:8081",
+            "value.converter.schema.registry.url": "http://hudi-cdc-schema-registry:8081",
             "transforms": "unwrap",
             "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
             "transforms.unwrap.drop.tombstones": "false",
@@ -168,11 +174,11 @@ To run this project locally, you need to have the following:
 10. Start ingesting the CDC data into Hudi:
 
     ```bash
-    docker exec -it spark /opt/spark/bin/spark-submit \
-        --jars /opt/spark/jars/hudi-spark3.5-bundle_2.12-1.0.2.jar,/opt/spark/jars/hudi-utilities-slim-bundle_2.12-1.0.2.jar \
-        --class org.apache.hudi.utilities.streamer.HoodieStreamer /opt/spark/jars/hudi-utilities-slim-bundle_2.12-1.0.2.jar \
+    docker exec -it hudi-cdc-spark /opt/spark/bin/spark-submit \
+        --class org.apache.hudi.utilities.streamer.HoodieStreamer \
+        /opt/spark/jars/hudi-utilities-bundle_2.12-1.0.2.jar \
         --table-type COPY_ON_WRITE \
-        --target-base-path hdfs://hdfs-namenode:9000/warehouse/my-data-lake \
+        --target-base-path hdfs://hudi-cdc-hdfs-namenode:9000/warehouse/my-data-lake \
         --target-table orders \
         --source-class org.apache.hudi.utilities.sources.AvroKafkaSource \
         --source-ordering-field updated_at \
@@ -181,16 +187,16 @@ To run this project locally, you need to have the following:
         --op UPSERT \
         --continuous \
         --enable-sync \
-        --hoodie-conf bootstrap.servers=kafka:29092 \
-        --hoodie-conf schema.registry.url=http://schema-registry:8081 \
-        --hoodie-conf hoodie.streamer.schemaprovider.registry.url=http://schema-registry:8081/subjects/postgres.public.orders-value/versions/latest \
+        --hoodie-conf bootstrap.servers=hudi-cdc-kafka:29092 \
+        --hoodie-conf schema.registry.url=http://hudi-cdc-schema-registry:8081 \
+        --hoodie-conf hoodie.streamer.schemaprovider.registry.url=http://hudi-cdc-schema-registry:8081/subjects/postgres.public.orders-value/versions/latest \
         --hoodie-conf hoodie.streamer.source.kafka.topic=postgres.public.orders \
         --hoodie-conf auto.offset.reset=earliest \
         --hoodie-conf hoodie.datasource.write.recordkey.field=id \
         --hoodie-conf hoodie.datasource.write.schema.allow.auto.evolution.column.drop=true \
         --hoodie-conf hoodie.datasource.hive_sync.mode=hms \
         --hoodie-conf hoodie.datasource.hive_sync.enable=true \
-        --hoodie-conf hoodie.datasource.hive_sync.metastore.uris=thrift://hive-metastore:9083 \
+        --hoodie-conf hoodie.datasource.hive_sync.metastore.uris=thrift://hudi-cdc-hive-metastore:9083 \
         --hoodie-conf hoodie.datasource.meta.sync.enable=true \
         --hoodie-conf hoodie.datasource.hive_sync.auto_create_database=true
     ```
@@ -200,7 +206,7 @@ To run this project locally, you need to have the following:
     -   Launch the Spark SQL CLI:
 
         ```bash
-        docker exec -it spark /opt/spark/bin/spark-sql --conf spark.sql.cli.print.header=true
+        docker exec -it hudi-cdc-spark /opt/spark/bin/spark-sql --conf spark.sql.cli.print.header=true
         ```
 
     -   View all the tables inside the data lake:
