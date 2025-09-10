@@ -49,23 +49,23 @@ To run this project locally, you need to have the following:
 4.  Run the CDC source infrastructure. This includes source PostgreSQL database (where the transactional data is stored), along with Kafka, Zookeeper, and Schema Registry:
 
     ```bash
-    docker compose -f cdc-source-docker-compose.yml up -d
+    docker compose -p cdc-source -f cdc-source-docker-compose.yml up -d --build
     ```
 
-5.  Verify your CDC source components are up running by executing the command `docker ps`. Your output should look similar to the following:
+5.  Verify your CDC source components are up running by executing the command `docker compose -p cdc-source ps`. Your output should look similar to the following:
 
     ```bash
-    CONTAINER ID   IMAGE                                   COMMAND                  CREATED          STATUS          PORTS                                                             NAMES
-    ab780e51b0c2   confluentinc/cp-kafka:7.3.2             "/etc/confluent/dock…"   23 minutes ago   Up 23 minutes   0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp                       hudi-cdc-kafka
-    96f23539cbc6   confluentinc/cp-schema-registry:7.9.0   "/etc/confluent/dock…"   23 minutes ago   Up 23 minutes   8081/tcp, 0.0.0.0:8181->8181/tcp, [::]:8181->8181/tcp             hudi-cdc-schema-registry
-    2076f34dacf7   confluentinc/cp-zookeeper:latest        "/etc/confluent/dock…"   23 minutes ago   Up 23 minutes   2888/tcp, 0.0.0.0:2181->2181/tcp, [::]:2181->2181/tcp, 3888/tcp   hudi-cdc-zookeeper
-    bb47bce4e6a0   postgres:17                             "docker-entrypoint.s…"   23 minutes ago   Up 23 minutes   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp                       hudi-cdc-source-db
+    NAME                       IMAGE                                   COMMAND                  SERVICE           CREATED         STATUS         PORTS
+    hudi-cdc-kafka             confluentinc/cp-kafka:7.3.2             "/etc/confluent/dock…"   kafka             4 minutes ago   Up 4 minutes   0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp
+    hudi-cdc-schema-registry   confluentinc/cp-schema-registry:7.9.0   "/etc/confluent/dock…"   schema-registry   4 minutes ago   Up 4 minutes   8081/tcp, 0.0.0.0:8181->8181/tcp, [::]:8181->8181/tcp
+    hudi-cdc-source-db         postgres:17                             "docker-entrypoint.s…"   postgres          4 minutes ago   Up 4 minutes   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+    hudi-cdc-zookeeper         confluentinc/cp-zookeeper:latest        "/etc/confluent/dock…"   zookeeper         4 minutes ago   Up 4 minutes   2888/tcp, 0.0.0.0:2181->2181/tcp, [::]:2181->2181/tcp, 3888/tcp
     ```
 
 6.  Run the datalake infrastructure. This will launch Hadoop HDFS, Hive Metastore and Spark which are needed to process, store, and query the data once it is captured from the source database:
 
     ```bash
-    docker compose -f datalake-docker-compose.yml up -d
+    docker compose -p cdc-datalake -f datalake-docker-compose.yml up -d --build
     ```
 
     If you have run this before and your Hive Metastore has some data, use the commands below instead to avoid running into any issues (such as the Hive Metastore not starting properly):
@@ -74,19 +74,15 @@ To run this project locally, you need to have the following:
     chmod +x ./scripts/reset-hive-metastore-db.sh && ./scripts/reset-hive-metastore-db.sh
     ```
 
-7.  Verify that all your CDC components up and running by executing the command `docker ps`. Your output should look similar to the following:
+7.  Verify that all your CDC components up and running by executing the command `docker compose -p cdc-datalake ps`. Your output should look similar to the following:
 
     ```bash
-    CONTAINER ID   IMAGE                                       COMMAND                  CREATED          STATUS                    PORTS                                                                                      NAMES
-    81dc5a23aa7a   onehouse-cdc-pipeline-demo-hive-metastore   "/entrypoint.sh"         29 seconds ago   Up 7 seconds              10000/tcp, 0.0.0.0:9083->9083/tcp, [::]:9083->9083/tcp, 10002/tcp                          hudi-cdc-hive-metastore
-    22fea1242bd4   apache/hadoop:3.4                           "/usr/local/bin/dumb…"   29 seconds ago   Up 28 seconds                                                                                                        hudi-cdc-hdfs-datanode1
-    5b01c1f0ee45   mysql:8.0                                   "docker-entrypoint.s…"   29 seconds ago   Up 28 seconds (healthy)   3306/tcp, 33060/tcp                                                                        hudi-cdc-hive-metastore-db
-    e61498fba83e   apache/hadoop:3.4                           "/bin/bash /namenode…"   29 seconds ago   Up 28 seconds (healthy)   0.0.0.0:9000->9000/tcp, [::]:9000->9000/tcp, 0.0.0.0:9870->9870/tcp, [::]:9870->9870/tcp   hudi-cdc-hdfs-namenode
-    a38fa43dac25   onehouse-cdc-pipeline-demo-spark            "/opt/entrypoint.sh …"   29 seconds ago   Up 28 seconds             0.0.0.0:7077->7077/tcp, [::]:7077->7077/tcp, 0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp   hudi-cdc-spark
-    ab780e51b0c2   confluentinc/cp-kafka:7.3.2                 "/etc/confluent/dock…"   12 minutes ago   Up 12 minutes             0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp                                                hudi-cdc-kafka
-    96f23539cbc6   confluentinc/cp-schema-registry:7.9.0       "/etc/confluent/dock…"   12 minutes ago   Up 12 minutes             8081/tcp, 0.0.0.0:8181->8181/tcp, [::]:8181->8181/tcp                                      hudi-cdc-schema-registry
-    2076f34dacf7   confluentinc/cp-zookeeper:latest            "/etc/confluent/dock…"   12 minutes ago   Up 12 minutes             2888/tcp, 0.0.0.0:2181->2181/tcp, [::]:2181->2181/tcp, 3888/tcp                            hudi-cdc-zookeeper
-    bb47bce4e6a0   postgres:17                                 "docker-entrypoint.s…"   12 minutes ago   Up 12 minutes             0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp                                                hudi-cdc-source-db
+    NAME                         IMAGE                         COMMAND                  SERVICE             CREATED         STATUS                   PORTS
+    hudi-cdc-hdfs-datanode1      apache/hadoop:3.4             "/usr/local/bin/dumb…"   hdfs-datanode1      9 minutes ago   Up 9 minutes
+    hudi-cdc-hdfs-namenode       apache/hadoop:3.4             "/bin/bash /namenode…"   hdfs-namenode       9 minutes ago   Up 9 minutes (healthy)   0.0.0.0:9000->9000/tcp, [::]:9000->9000/tcp, 0.0.0.0:9870->9870/tcp, [::]:9870->9870/tcp
+    hudi-cdc-hive-metastore      cdc-datalake-hive-metastore   "/entrypoint.sh"         hive-metastore      9 minutes ago   Up 9 minutes             10000/tcp, 0.0.0.0:9083->9083/tcp, [::]:9083->9083/tcp, 10002/tcp
+    hudi-cdc-hive-metastore-db   mysql:8.0                     "docker-entrypoint.s…"   hive-metastore-db   9 minutes ago   Up 9 minutes (healthy)   3306/tcp, 33060/tcp
+    hudi-cdc-spark               cdc-datalake-spark            "/opt/entrypoint.sh …"   spark               9 minutes ago   Up 9 minutes             0.0.0.0:7077->7077/tcp, [::]:7077->7077/tcp, 0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
     ```
 
 8.  Building a Kafka Connect image for Debezium and run the container:
@@ -238,8 +234,8 @@ To run this project locally, you need to have the following:
 13. To stop and remove the containers, execute the commands:
 
     ```bash
-    docker compose -f datalake-docker-compose.yml down
-    docker compose -f cdc-source-docker-compose.yml down
+    docker compose -p cdc-datalake down
+    docker compose -p cdc-source down
     ```
 
 14. To remove the network:
