@@ -174,7 +174,7 @@ To run this project locally, you need to have the following:
         --class org.apache.hudi.utilities.streamer.HoodieStreamer \
         /opt/spark/jars/hudi-utilities-bundle_2.12-1.0.2.jar \
         --table-type COPY_ON_WRITE \
-        --target-base-path hdfs://hudi-cdc-hdfs-namenode:9000/warehouse/my-data-lake \
+        --target-base-path hdfs://hudi-cdc-hdfs-namenode:9000/warehouse/my-data-lakehouse \
         --target-table orders \
         --source-class org.apache.hudi.utilities.sources.AvroKafkaSource \
         --source-ordering-field updated_at \
