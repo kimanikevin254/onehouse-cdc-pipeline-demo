@@ -1,4 +1,4 @@
-# Implementing CDC with Apache Hudi for Real-Time Data Lake Updates
+# Implementing CDC with Apache Hudi™ for Near Real-Time Data Lakehouse Updates
 
 This repository demonstrates how to implement Change Data Capture (CDC) with Apache Hudi to enable real-time updates in a data lake.
 
