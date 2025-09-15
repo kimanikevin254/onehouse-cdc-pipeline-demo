@@ -1,6 +1,6 @@
-# Implementing CDC with Apache Hudi for Real-Time Data Lake Updates
+# Implementing CDC with Apache Hudi™ for Near Real-Time Data Lakehouse Updates
 
-This repository demonstrates how to implement Change Data Capture (CDC) with Apache Hudi to enable real-time updates in a data lake.
+This repository demonstrates how to implement Change Data Capture (CDC) with Apache Hudi to enable real-time updates in a data lakehouse.
 
 ## Architecture Overview
 
@@ -9,11 +9,11 @@ The CDC pipeline includes the following components:
 -   [PostgreSQL](https://www.postgresql.org/) as the transactional source database
 -   [Debezium](https://debezium.io/) to capture real-time changes from the source database
 -   [Kafka](https://kafka.apache.org/) as the message broker for streaming change events
--   [Hadoop Distributed File System HDFS (HDFS)](https://hadoop.apache.org/docs/r1.2.1/hdfs_design.html) as the destination data lake storage
--   [Apache Spark](https://spark.apache.org/) to process and write data into the data lake using Hudi Streamer
+-   [Hadoop Distributed File System HDFS (HDFS)](https://hadoop.apache.org/docs/r1.2.1/hdfs_design.html) as the storage layer
+-   [Apache Spark](https://spark.apache.org/) to process and write data into the data lakehouse using Hudi Streamer
 -   [Apache Hudi](https://hudi.apache.org/) to manage incremental data updates
 -   [Hive Metastore](https://hive.apache.org/docs/latest/adminmanual-metastore-3-0-administration_75978150/) to manage metadata.
--   [Spark SQL](https://spark.apache.org/sql/) to query the datalake
+-   [Spark SQL](https://spark.apache.org/sql/) to query the data lakehouse
 
 Here is an architecture diagram of the CDC pipeline:
 
@@ -62,10 +62,10 @@ To run this project locally, you need to have the following:
     hudi-cdc-zookeeper         confluentinc/cp-zookeeper:latest        "/etc/confluent/dock…"   zookeeper         4 minutes ago   Up 4 minutes   2888/tcp, 0.0.0.0:2181->2181/tcp, [::]:2181->2181/tcp, 3888/tcp
     ```
 
-6.  Run the datalake infrastructure. This will launch Hadoop HDFS, Hive Metastore and Spark which are needed to process, store, and query the data once it is captured from the source database:
+6.  Run the data lakehouse infrastructure. This will launch Hadoop HDFS, Hive Metastore and Spark which are needed to process, store, and query the data once it is captured from the source database:
 
     ```bash
-    docker compose -p cdc-datalake -f datalake-docker-compose.yml up -d --build
+    docker compose -p cdc-lakehouse -f lakehouse-docker-compose.yml up -d --build
     ```
 
     If you have run this before and your Hive Metastore has some data, use the commands below instead to avoid running into any issues (such as the Hive Metastore not starting properly):
@@ -74,15 +74,15 @@ To run this project locally, you need to have the following:
     chmod +x ./scripts/reset-hive-metastore-db.sh && ./scripts/reset-hive-metastore-db.sh
     ```
 
-7.  Verify that all your CDC components up and running by executing the command `docker compose -p cdc-datalake ps`. Your output should look similar to the following:
+7.  Verify that all your CDC components up and running by executing the command `docker compose -p cdc-lakehouse ps`. Your output should look similar to the following:
 
     ```bash
-    NAME                         IMAGE                         COMMAND                  SERVICE             CREATED         STATUS                   PORTS
-    hudi-cdc-hdfs-datanode1      apache/hadoop:3.4             "/usr/local/bin/dumb…"   hdfs-datanode1      9 minutes ago   Up 9 minutes
-    hudi-cdc-hdfs-namenode       apache/hadoop:3.4             "/bin/bash /namenode…"   hdfs-namenode       9 minutes ago   Up 9 minutes (healthy)   0.0.0.0:9000->9000/tcp, [::]:9000->9000/tcp, 0.0.0.0:9870->9870/tcp, [::]:9870->9870/tcp
-    hudi-cdc-hive-metastore      cdc-datalake-hive-metastore   "/entrypoint.sh"         hive-metastore      9 minutes ago   Up 9 minutes             10000/tcp, 0.0.0.0:9083->9083/tcp, [::]:9083->9083/tcp, 10002/tcp
-    hudi-cdc-hive-metastore-db   mysql:8.0                     "docker-entrypoint.s…"   hive-metastore-db   9 minutes ago   Up 9 minutes (healthy)   3306/tcp, 33060/tcp
-    hudi-cdc-spark               cdc-datalake-spark            "/opt/entrypoint.sh …"   spark               9 minutes ago   Up 9 minutes             0.0.0.0:7077->7077/tcp, [::]:7077->7077/tcp, 0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+    NAME                         IMAGE                          COMMAND                  SERVICE             CREATED          STATUS                    PORTS
+    hudi-cdc-hdfs-datanode1      apache/hadoop:3.4              "/usr/local/bin/dumb…"   hdfs-datanode1      42 seconds ago   Up 41 seconds
+    hudi-cdc-hdfs-namenode       apache/hadoop:3.4              "/bin/bash /namenode…"   hdfs-namenode       42 seconds ago   Up 42 seconds (healthy)   0.0.0.0:9000->9000/tcp, [::]:9000->9000/tcp, 0.0.0.0:9870->9870/tcp, [::]:9870->9870/tcp
+    hudi-cdc-hive-metastore      cdc-lakehouse-hive-metastore   "/entrypoint.sh"         hive-metastore      42 seconds ago   Up 16 seconds             10000/tcp, 0.0.0.0:9083->9083/tcp, [::]:9083->9083/tcp, 10002/tcp
+    hudi-cdc-hive-metastore-db   mysql:8.0                      "docker-entrypoint.s…"   hive-metastore-db   42 seconds ago   Up 42 seconds (healthy)   3306/tcp, 33060/tcp
+    hudi-cdc-spark               cdc-lakehouse-spark            "/opt/entrypoint.sh …"   spark               42 seconds ago   Up 42 seconds             0.0.0.0:7077->7077/tcp, [::]:7077->7077/tcp, 0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
     ```
 
 8.  Building a Kafka Connect image for Debezium and run the container:
@@ -197,7 +197,7 @@ To run this project locally, you need to have the following:
         --hoodie-conf hoodie.datasource.hive_sync.auto_create_database=true
     ```
 
-11. To query the data lake using Spark SQL:
+11. To query the data lakehouse using Spark SQL:
 
     -   Launch the Spark SQL CLI:
 
@@ -205,7 +205,7 @@ To run this project locally, you need to have the following:
         docker exec -it hudi-cdc-spark /opt/spark/bin/spark-sql --conf spark.sql.cli.print.header=true
         ```
 
-    -   View all the tables inside the data lake:
+    -   View all the tables inside the data house:
 
         ```bash
         SHOW TABLES;
@@ -218,7 +218,7 @@ To run this project locally, you need to have the following:
         orders
         ```
 
-    -   You can also view the actual data in the data lake using the command `SELECT id, product_name, quantity, price, status, updated_at FROM orders;`:
+    -   You can also view the actual data in the data lakehouse using the command `SELECT id, product_name, quantity, price, status, updated_at FROM orders;`:
 
         ```
         id      product_name    quantity        price   status  updated_at
@@ -229,12 +229,12 @@ To run this project locally, you need to have the following:
         5       Keyboard        2       100.00  canceled        2025-08-06T19:08:14.247179Z
         ```
 
-12. You can now make any changes to the data in the source Postgres database and they will always be reflected in the datalake after every 10 seconds.
+12. You can now make any changes to the data in the source Postgres database and they will always be reflected in the data lakehouse after every 10 seconds.
 
 13. To stop and remove the containers, execute the commands:
 
     ```bash
-    docker compose -p cdc-datalake down
+    docker compose -p cdc-lakehouse down
     docker compose -p cdc-source down
     ```
 
