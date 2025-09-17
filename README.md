@@ -189,7 +189,7 @@ To run this project locally, you need to have the following:
         --hoodie-conf hoodie.streamer.source.kafka.topic=postgres.public.orders \
         --hoodie-conf auto.offset.reset=earliest \
         --hoodie-conf hoodie.datasource.write.recordkey.field=id \
-        --hoodie-conf hoodie.datasource.write.schema.allow.auto.evolution.column.drop=true \
+        --hoodie-conf hoodie.write.set.null.for.missing.columns=true \
         --hoodie-conf hoodie.datasource.hive_sync.mode=hms \
         --hoodie-conf hoodie.datasource.hive_sync.enable=true \
         --hoodie-conf hoodie.datasource.hive_sync.metastore.uris=thrift://hudi-cdc-hive-metastore:9083 \
